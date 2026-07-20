@@ -1325,19 +1325,60 @@ class RepositoryFileProviderTest {
   }
 
   @Test
-  void testRestoreFileUnifiedRepositoryAccessDeniedException() throws Exception {
+  void testRestoreFileAccessControlException() throws Exception {
+    GenericFilePath path =
+      GenericFilePath.parse( "/home/admin/.trash/pho:8b69da2b-2a10-4a82-89bc-a376e52d5482" + "/PAZReport.xanalyzer" );
+
+    FileService fileServiceMock = mock( FileService.class );
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
+
+    String fileId = repositoryProvider.getTrashFileId( path );
+    RepositoryFile nativeFile = createNativeFile( fileId, path, false );
+    doThrow( new UnifiedRepositoryAccessDeniedException() ).when( fileServiceMock ).doRestoreFiles( any() );
+    doReturn( nativeFile ).when( repositoryMock ).getFileById( fileId );
+    // Deleted item is found but the caller lacks WRITE access on the restore target.
+    doReturn( true ).when( repositoryMock ).hasAccess( eq( path.toString() ), any() );
+
+    assertThrows( AccessControlException.class, () -> repositoryProvider.restoreFile( path ) );
+    verify( fileServiceMock ).doRestoreFiles( fileId );
+  }
+
+  @Test
+  void testRestoreFileUnifiedRepositoryNotFoundException() throws Exception {
     GenericFilePath path =
       GenericFilePath.parse( "/home/admin/.trash/pho:8b69da2b-2a10-4a82-89bc-a376e52d5482" + "/PAZReport.xanalyzer" );
 
     FileService fileServiceMock = mock( FileService.class );
     doNothing().when( fileServiceMock ).doRestoreFiles( any() );
     IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    doReturn( null ).when( repositoryMock ).getFileById( any() );
     RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
 
-    doThrow( new UnifiedRepositoryAccessDeniedException() ).when( fileServiceMock ).doRestoreFiles( any() );
+    doThrow( new InternalError() ).when( fileServiceMock ).doRestoreFiles( any() );
 
-    assertThrows( AccessControlException.class, () -> repositoryProvider.restoreFile( path ) );
+    assertThrows( NotFoundException.class, () -> repositoryProvider.restoreFile( path ) );
     verify( fileServiceMock ).doRestoreFiles( repositoryProvider.getTrashFileId( path ) );
+  }
+
+  @Test
+  void testRestoreFileResourceAccessDenied() throws Exception {
+    GenericFilePath path =
+      GenericFilePath.parse( "/home/admin/.trash/pho:8b69da2b-2a10-4a82-89bc-a376e52d5482" + "/PAZReport.xanalyzer" );
+
+    FileService fileServiceMock = mock( FileService.class );
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
+
+    String fileId = repositoryProvider.getTrashFileId( path );
+    RepositoryFile nativeFile = createNativeFile( fileId, path, false );
+    doThrow( new InternalError() ).when( fileServiceMock ).doRestoreFiles( any() );
+    doReturn( nativeFile ).when( repositoryMock ).getFileById( fileId );
+    // Deleted item is found but the caller lacks WRITE access on the restore target.
+    doReturn( false ).when( repositoryMock ).hasAccess( eq( nativeFile.getPath() ), any() );
+
+    assertThrows( ResourceAccessDeniedException.class, () -> repositoryProvider.restoreFile( path ) );
+    verify( fileServiceMock ).doRestoreFiles( fileId );
   }
 
   @Test
@@ -1346,14 +1387,18 @@ class RepositoryFileProviderTest {
       GenericFilePath.parse( "/home/admin/.trash/pho:8b69da2b-2a10-4a82-89bc-a376e52d5482" + "/PAZReport.xanalyzer" );
 
     FileService fileServiceMock = mock( FileService.class );
-    doNothing().when( fileServiceMock ).doRestoreFiles( any() );
     IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
     RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
 
+    String fileId = repositoryProvider.getTrashFileId( path );
+    RepositoryFile nativeFile = createNativeFile( fileId, path, false );
     doThrow( new InternalError() ).when( fileServiceMock ).doRestoreFiles( any() );
+    doReturn( nativeFile ).when( repositoryMock ).getFileById( fileId );
+    // Deleted item is found but the caller lacks WRITE access on the restore target.
+    doReturn( true ).when( repositoryMock ).hasAccess( eq( nativeFile.getPath() ), any() );
 
     assertThrows( OperationFailedException.class, () -> repositoryProvider.restoreFile( path ) );
-    verify( fileServiceMock ).doRestoreFiles( repositoryProvider.getTrashFileId( path ) );
+    verify( fileServiceMock ).doRestoreFiles( fileId );
   }
   // endregion
 

@@ -763,6 +763,10 @@ public class RepositoryFileProvider extends BaseGenericFileProvider<RepositoryFi
     return hasAccess( path, EnumSet.of( GenericFilePermission.WRITE ) );
   }
 
+  private boolean canWrite( @NonNull String path ) throws InvalidPathException {
+    return canWrite( GenericFilePath.parseRequired( path ) );
+  }
+
   private EnumSet<RepositoryFilePermission> getRepositoryPermissions( EnumSet<GenericFilePermission> permissions ) {
     EnumSet<RepositoryFilePermission> repositoryFilePermissions = EnumSet.noneOf( RepositoryFilePermission.class );
 
@@ -841,6 +845,17 @@ public class RepositoryFileProvider extends BaseGenericFileProvider<RepositoryFi
     } catch ( UnifiedRepositoryAccessDeniedException e ) {
       throw new AccessControlException( e );
     } catch ( InternalError e ) {
+      org.pentaho.platform.api.repository2.unified.RepositoryFile file = getNativeFileById( fileId );
+
+      if ( file == null ) {
+        throw new NotFoundException( String.format( "Path not found '%s'.", path ), path, e );
+      }
+
+      if ( !canWrite( file.getPath() ) ) {
+        throw new ResourceAccessDeniedException( String.format( "User is not authorized to restore '%s'.", path ), path,
+          e );
+      }
+
       throw new OperationFailedException( e );
     }
   }
@@ -1068,6 +1083,10 @@ public class RepositoryFileProvider extends BaseGenericFileProvider<RepositoryFi
 
   protected String getFileId( @NonNull GenericFilePath path ) throws OperationFailedException {
     return getNativeFile( path ).getId().toString();
+  }
+
+  protected org.pentaho.platform.api.repository2.unified.RepositoryFile getNativeFileById( @NonNull String fileId ) {
+    return unifiedRepository.getFileById( fileId );
   }
 
   protected org.pentaho.platform.api.repository2.unified.RepositoryFile getOrCreateNativeFolder(

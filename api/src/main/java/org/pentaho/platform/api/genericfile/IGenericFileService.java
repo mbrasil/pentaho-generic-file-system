@@ -724,11 +724,12 @@ public interface IGenericFileService {
    * Restores a file, given its path.
    *
    * @param path The file path to be restored. This path must refer to an item in the trash (deleted).
-   * @throws AccessControlException   If the current user cannot perform this operation.
-   * @throws InvalidPathException     If the specified path is not valid.
-   * @throws NotFoundException        If the specified path does not exist, or does not refer to an item in the
-   *                                  trash (deleted), or the current user is not allowed to access it.
-   * @throws OperationFailedException If the operation fails for some other (checked) reason.
+   * @throws ResourceAccessDeniedException If the current user cannot restore the file.
+   * @throws AccessControlException        If the current user cannot perform this operation.
+   * @throws InvalidPathException          If the specified path is not valid.
+   * @throws NotFoundException             If the specified path does not exist, or does not refer to an item in the
+   *                                       trash (deleted), or the current user is not allowed to access it.
+   * @throws OperationFailedException      If the operation fails for some other (checked) reason.
    */
   void restoreFile( @NonNull GenericFilePath path ) throws OperationFailedException;
 
@@ -741,13 +742,14 @@ public interface IGenericFileService {
    *
    * @param path The string representation of the file's path to be restored. This path must refer to an item in the
    *             trash (deleted).
-   * @throws AccessControlException   If the current user cannot perform this operation.
-   * @throws InvalidPathException     If the specified path is not valid, or if the specified path's string
-   *                                  representation is not valid, according to
-   *                                  {@link GenericFilePath#parseRequired(String)}.
-   * @throws NotFoundException        If the specified path does not exist, or does not refer to an item in the
-   *                                  trash (deleted), or the current user is not allowed to access it.
-   * @throws OperationFailedException If the operation fails for some other (checked) reason.
+   * @throws ResourceAccessDeniedException If the current user cannot restore the file.
+   * @throws AccessControlException        If the current user cannot perform this operation.
+   * @throws InvalidPathException          If the specified path is not valid, or if the specified path's string
+   *                                       representation is not valid, according to
+   *                                       {@link GenericFilePath#parseRequired(String)}.
+   * @throws NotFoundException             If the specified path does not exist, or does not refer to an item in the
+   *                                       trash (deleted), or the current user is not allowed to access it.
+   * @throws OperationFailedException      If the operation fails for some other (checked) reason.
    * @see IGenericFileService#restoreFile(GenericFilePath)
    */
   default void restoreFile( @NonNull String path ) throws OperationFailedException {
