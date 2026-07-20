@@ -2235,12 +2235,39 @@ class RepositoryFileProviderTest {
       .doCopyFiles( any(), any(), any() );
     IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
     doReturn( createNativeFile( fileId, path, false ) ).when( repositoryMock ).getFile( path.toString() );
+    doReturn( true ).when( fileServiceMock ).doesExist( encodeRepositoryPath( path.toString() ) );
+    doReturn( true ).when( repositoryMock ).hasAccess( eq( destPath.toString() ), any() );
     RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
     GenericFilePath newPath = repositoryProvider.getNewPath( destPath, path.getLastSegment() );
     doReturn( false ).when( fileServiceMock ).doesExist( encodeRepositoryPath( newPath.toString() ) );
 
     assertThrows( AccessControlException.class, () -> repositoryProvider.copyFile( path, destPath ) );
     verify( fileServiceMock ).doCopyFiles( any(), any(), any() );
+  }
+
+  @Test
+  void testCopyFilesAccessDeniedWhenSourceDisappearsThrowsNotFound() throws Exception {
+    String fileId = "8b69da2b-2a10-4a82-89bc-a376e52d5482";
+    GenericFilePath path = GenericFilePath.parse( "/home/admin/" + fileId + "/PAZReport.xanalyzer" );
+    GenericFilePath destPath = GenericFilePath.parse( "/archive/" );
+
+    FileService fileServiceMock = mock( FileService.class );
+    doReturn( "true" ).when( fileServiceMock ).doGetCanCreate();
+    doReturn( true ).when( fileServiceMock ).doesExist( encodeRepositoryPath( destPath.toString() ) );
+    doThrow( new UnifiedRepositoryAccessDeniedException( "Access Denied" ) ).when( fileServiceMock )
+      .doCopyFiles( any(), any(), any() );
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    doReturn( createNativeFile( fileId, path, false ) ).when( repositoryMock ).getFile( path.toString() );
+    RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
+    GenericFilePath newPath = repositoryProvider.getNewPath( destPath, path.getLastSegment() );
+    doReturn( false ).when( fileServiceMock ).doesExist( encodeRepositoryPath( newPath.toString() ) );
+    doReturn( false ).when( fileServiceMock ).doesExist( encodeRepositoryPath( path.toString() ) );
+
+    NotFoundException ex = assertThrows( NotFoundException.class, () -> repositoryProvider.copyFile( path, destPath ) );
+
+    assertEquals( String.format( "Path not found '%s'.", path ), ex.getMessage() );
+    verify( fileServiceMock ).doCopyFiles( any(), any(), any() );
+    verify( repositoryMock, never() ).hasAccess( eq( destPath.toString() ), any() );
   }
 
   @Test
@@ -2281,6 +2308,53 @@ class RepositoryFileProviderTest {
     doReturn( false ).when( fileServiceMock ).doesExist( encodeRepositoryPath( newPath.toString() ) );
 
     assertThrows( Exception.class, () -> repositoryProvider.copyFile( path, destPath ) );
+    verify( fileServiceMock ).doCopyFiles( any(), any(), any() );
+  }
+
+  @Test
+  void testCopyFilesUnifiedRepositoryExceptionResourceAccessDeniedOnDestination() throws Exception {
+    String fileId = "8b69da2b-2a10-4a82-89bc-a376e52d5482";
+    GenericFilePath path = GenericFilePath.parse( "/home/admin/" + fileId + "/PAZReport.xanalyzer" );
+    GenericFilePath destPath = GenericFilePath.parse( "/archive/" );
+
+    FileService fileServiceMock = mock( FileService.class );
+    doReturn( "true" ).when( fileServiceMock ).doGetCanCreate();
+    doReturn( true ).when( fileServiceMock ).doesExist( encodeRepositoryPath( path.toString() ) );
+    doReturn( true ).when( fileServiceMock ).doesExist( encodeRepositoryPath( destPath.toString() ) );
+    doThrow( new UnifiedRepositoryAccessDeniedException() ).when( fileServiceMock ).doCopyFiles( any(), any(), any() );
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    // Source is found and readable, but the destination is not writable.
+    doReturn( createNativeFile( fileId, path, false ) ).when( repositoryMock ).getFile( path.toString() );
+    doReturn( false ).when( repositoryMock ).hasAccess( eq( destPath.toString() ), any() );
+    RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
+    GenericFilePath newPath = repositoryProvider.getNewPath( destPath, path.getLastSegment() );
+    doReturn( false ).when( fileServiceMock ).doesExist( encodeRepositoryPath( newPath.toString() ) );
+
+    assertThrows( ResourceAccessDeniedException.class, () -> repositoryProvider.copyFile( path, destPath ) );
+    verify( fileServiceMock ).doCopyFiles( any(), any(), any() );
+  }
+
+  @Test
+  void testCopyFilesUnifiedRepositoryExceptionFallsBackToOperationFailed() throws Exception {
+    String fileId = "8b69da2b-2a10-4a82-89bc-a376e52d5482";
+    GenericFilePath path = GenericFilePath.parse( "/home/admin/" + fileId + "/PAZReport.xanalyzer" );
+    GenericFilePath destPath = GenericFilePath.parse( "/archive/" );
+
+    FileService fileServiceMock = mock( FileService.class );
+    doReturn( "true" ).when( fileServiceMock ).doGetCanCreate();
+    doReturn( true ).when( fileServiceMock ).doesExist( encodeRepositoryPath( destPath.toString() ) );
+    doThrow( new UnifiedRepositoryException() ).when( fileServiceMock ).doCopyFiles( any(), any(), any() );
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    // Source found/readable and destination writable: neither follow-up reproduces the failure.
+    doReturn( createNativeFile( fileId, path, false ) ).when( repositoryMock ).getFile( path.toString() );
+    doReturn( true ).when( repositoryMock ).hasAccess( eq( destPath.toString() ), any() );
+    RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
+    GenericFilePath newPath = repositoryProvider.getNewPath( destPath, path.getLastSegment() );
+    doReturn( false ).when( fileServiceMock ).doesExist( encodeRepositoryPath( newPath.toString() ) );
+
+    OperationFailedException ex =
+      assertThrows( OperationFailedException.class, () -> repositoryProvider.copyFile( path, destPath ) );
+    assertEquals( OperationFailedException.class, ex.getClass() );
     verify( fileServiceMock ).doCopyFiles( any(), any(), any() );
   }
   // endregion

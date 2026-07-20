@@ -759,6 +759,10 @@ public class RepositoryFileProvider extends BaseGenericFileProvider<RepositoryFi
     return unifiedRepository.hasAccess( path.toString(), getRepositoryPermissions( permissions ) );
   }
 
+  private boolean canWrite( @NonNull GenericFilePath path ) {
+    return hasAccess( path, EnumSet.of( GenericFilePermission.WRITE ) );
+  }
+
   private EnumSet<RepositoryFilePermission> getRepositoryPermissions( EnumSet<GenericFilePermission> permissions ) {
     EnumSet<RepositoryFilePermission> repositoryFilePermissions = EnumSet.noneOf( RepositoryFilePermission.class );
 
@@ -896,7 +900,7 @@ public class RepositoryFileProvider extends BaseGenericFileProvider<RepositoryFi
 
     if ( fileService.doesExist( pathToString( newPath ) ) ) {
       throw new ConflictException(
-        String.format( "File to be copied already exists on the destination folder: '%s'.", path ) );
+        String.format( "File to be copied already exists on the destination folder: '%s'.", newPath ) );
     }
 
     String fileId = getFileId( path );
@@ -904,8 +908,17 @@ public class RepositoryFileProvider extends BaseGenericFileProvider<RepositoryFi
     try {
       fileService.doCopyFiles( destinationFolderString, FileService.MODE_RENAME, fileId );
     } catch ( UnifiedRepositoryAccessDeniedException e ) {
+      if ( !fileService.doesExist( pathToString( path ) ) ) {
+        throw new NotFoundException( String.format( "Path not found '%s'.", path ), path, e );
+      }
+
+      if ( !canWrite( destinationFolder ) ) {
+        throw new ResourceAccessDeniedException(
+          String.format( "User is not authorized to write to '%s'.", destinationFolder ), destinationFolder, e );
+      }
+
       throw new AccessControlException( e );
-    } catch ( IllegalArgumentException e ) {
+    } catch ( UnifiedRepositoryException | IllegalArgumentException e ) {
       throw new OperationFailedException( e );
     }
   }
