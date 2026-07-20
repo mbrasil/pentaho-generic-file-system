@@ -314,13 +314,14 @@ public interface IGenericFileProvider<T extends IGenericFile> {
    * @param newName The new name of the file or folder. If it's a file, the new name must not have its extension.
    *                This name must not be empty, and must not contain any control characters.
    * @return {@code true} if the file or folder was renamed, {@code false} otherwise.
-   * @throws AccessControlException    If the current user cannot perform this operation.
-   * @throws InvalidPathException      If the new path is not valid.
-   * @throws InvalidOperationException If the {@code newName} is not valid.
-   * @throws NotFoundException         If the specified path does not exist, or does refer to an item in the
-   *                                   trash (deleted), or the current user is not allowed to access it.
-   * @throws ConflictException         If the file or folder with the new name already exists.
-   * @throws OperationFailedException  If the operation fails for some other (checked) reason.
+   * @throws ResourceAccessDeniedException If the current user cannot write to the given path.
+   * @throws AccessControlException        If the current user cannot perform this operation.
+   * @throws InvalidPathException          If the new path is not valid.
+   * @throws InvalidOperationException     If the {@code newName} is not valid.
+   * @throws NotFoundException             If the specified path does not exist, or does refer to an item in the
+   *                                       trash (deleted), or the current user is not allowed to access it.
+   * @throws ConflictException             If the file or folder with the new name already exists.
+   * @throws OperationFailedException      If the operation fails for some other (checked) reason.
    * @see IGenericFileService#renameFile(GenericFilePath, String)
    */
   boolean renameFile( @NonNull GenericFilePath path, @NonNull String newName ) throws OperationFailedException;

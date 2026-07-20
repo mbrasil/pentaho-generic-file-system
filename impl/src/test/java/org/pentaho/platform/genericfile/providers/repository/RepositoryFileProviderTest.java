@@ -2091,6 +2091,7 @@ class RepositoryFileProviderTest {
     doThrow( new UnifiedRepositoryAccessDeniedException( "Not Authorized" ) ).when( fileServiceMock )
       .doRename( encodeRepositoryPath( path.toString() ), newName );
     IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    doReturn( true ).when( repositoryMock ).hasAccess( eq( path.toString() ), any() );
     RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
 
     GenericFilePath newPath = repositoryProvider.getNewPath( path.getParent(), newName + ".xanalyzer" );
@@ -2098,6 +2099,29 @@ class RepositoryFileProviderTest {
 
     assertThrows( AccessControlException.class, () -> repositoryProvider.renameFile( path, newName ) );
 
+    verify( fileServiceMock ).doRename( encodeRepositoryPath( path.toString() ), newName );
+  }
+
+  @Test
+  void testRenameFileResourceAccessDenied() throws Exception {
+    String fileId = "8b69da2b-2a10-4a82-89bc-a376e52d5482";
+    GenericFilePath path = GenericFilePath.parse( "/home/admin/" + fileId + "/PAZReport.xanalyzer" );
+    String newName = "renamed.xanalyzer";
+
+    FileService fileServiceMock = mock( FileService.class );
+    doReturn( "true" ).when( fileServiceMock ).doGetCanCreate();
+    doReturn( true ).when( fileServiceMock ).doesExist( encodeRepositoryPath( path.toString() ) );
+    doReturn( true ).when( fileServiceMock ).isValidFileName( newName, true );
+    doThrow( new UnifiedRepositoryAccessDeniedException() ).when( fileServiceMock )
+      .doRename( encodeRepositoryPath( path.toString() ), newName );
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    doReturn( false ).when( repositoryMock ).hasAccess( eq( path.toString() ), any() );
+    RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
+
+    GenericFilePath newPath = repositoryProvider.getNewPath( path.getParent(), newName );
+    doReturn( false ).when( fileServiceMock ).doesExist( encodeRepositoryPath( newPath.toString() ) );
+
+    assertThrows( ResourceAccessDeniedException.class, () -> repositoryProvider.renameFile( path, newName ) );
     verify( fileServiceMock ).doRename( encodeRepositoryPath( path.toString() ), newName );
   }
 

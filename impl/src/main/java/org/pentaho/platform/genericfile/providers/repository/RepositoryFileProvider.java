@@ -846,8 +846,7 @@ public class RepositoryFileProvider extends BaseGenericFileProvider<RepositoryFi
   }
 
   @Override
-  public boolean renameFile( @NonNull GenericFilePath path, @NonNull String newName )
-    throws OperationFailedException {
+  public boolean renameFile( @NonNull GenericFilePath path, @NonNull String newName ) throws OperationFailedException {
     if ( !Boolean.parseBoolean( fileService.doGetCanCreate() ) ) {
       throw new AccessControlException();
     }
@@ -876,6 +875,11 @@ public class RepositoryFileProvider extends BaseGenericFileProvider<RepositoryFi
     try {
       return fileService.doRename( pathString, newName );
     } catch ( UnifiedRepositoryAccessDeniedException e ) {
+      if ( !canWrite( path ) ) {
+        throw new ResourceAccessDeniedException( String.format( "User is not authorized to rename '%s'.", path ), path,
+          e );
+      }
+
       throw new AccessControlException( e );
     } catch ( Exception e ) {
       throw new OperationFailedException( e );
