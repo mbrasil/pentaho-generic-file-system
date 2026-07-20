@@ -11,7 +11,6 @@
  ******************************************************************************/
 
 
-
 package org.pentaho.platform.api.genericfile;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
@@ -352,12 +351,13 @@ public interface IGenericFileProvider<T extends IGenericFile> {
    *                          trash (deleted).
    * @param destinationFolder The path of the destination folder. This path must not refer to a folder in the trash
    *                          (deleted).
-   * @throws AccessControlException   If the current user cannot perform this operation.
-   * @throws InvalidPathException     If the destination path is not valid.
-   * @throws NotFoundException        If either path does not exist or does refer to an item in the trash
-   *                                  (deleted), or the current user is not allowed to access it.
-   * @throws ConflictException        If the file or folder to be moved already exists on the destination folder.
-   * @throws OperationFailedException If the operation fails for some other (checked) reason.
+   * @throws ResourceAccessDeniedException If the current user cannot write to the given path or destination folder.
+   * @throws AccessControlException        If the current user cannot perform this operation.
+   * @throws InvalidPathException          If the destination path is not valid.
+   * @throws NotFoundException             If either path does not exist or does refer to an item in the trash
+   *                                       (deleted), or the current user is not allowed to access it.
+   * @throws ConflictException             If the file or folder to be moved already exists on the destination folder.
+   * @throws OperationFailedException      If the operation fails for some other (checked) reason.
    * @see IGenericFileService#moveFile(GenericFilePath, GenericFilePath)
    */
   void moveFile( @NonNull GenericFilePath path, @NonNull GenericFilePath destinationFolder )

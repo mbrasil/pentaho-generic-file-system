@@ -11,7 +11,6 @@
  ******************************************************************************/
 
 
-
 package org.pentaho.platform.genericfile.providers.repository;
 
 import com.google.common.net.MediaType;
@@ -2425,8 +2424,11 @@ class RepositoryFileProviderTest {
 
     FileService fileServiceMock = mock( FileService.class );
     doReturn( "true" ).when( fileServiceMock ).doGetCanCreate();
+    doReturn( true ).when( fileServiceMock ).doesExist( encodeRepositoryPath( path.toString() ) );
     doThrow( UnifiedRepositoryAccessDeniedException.class ).when( fileServiceMock ).doMoveFiles( any(), any() );
     IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    doReturn( true ).when( repositoryMock ).hasAccess( eq( path.toString() ), any() );
+    doReturn( true ).when( repositoryMock ).hasAccess( eq( destPath.toString() ), any() );
     doReturn( createNativeFile( fileId, path, false ) ).when( repositoryMock ).getFile( path.toString() );
     RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
     GenericFilePath newPath = repositoryProvider.getNewPath( destPath, path.getLastSegment() );
@@ -2452,6 +2454,71 @@ class RepositoryFileProviderTest {
     doReturn( false ).when( fileServiceMock ).doesExist( encodeRepositoryPath( newPath.toString() ) );
 
     assertThrows( NotFoundException.class, () -> repositoryProvider.moveFile( path, destPath ) );
+    verify( fileServiceMock ).doMoveFiles( any(), any() );
+  }
+
+  @Test
+  void testMoveFilesUnifiedRepositoryAccessDeniedExceptionNotFoundSource() throws Exception {
+    String fileId = "8b69da2b-2a10-4a82-89bc-a376e52d5482";
+    GenericFilePath path = GenericFilePath.parse( "/home/admin/" + fileId + "/PAZReport.xanalyzer" );
+    GenericFilePath destPath = GenericFilePath.parse( "/archive/" );
+
+    FileService fileServiceMock = mock( FileService.class );
+    doReturn( "true" ).when( fileServiceMock ).doGetCanCreate();
+    doThrow( new UnifiedRepositoryAccessDeniedException() ).when( fileServiceMock ).doMoveFiles( any(), any() );
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    doReturn( createNativeFile( fileId, path, false ) ).when( repositoryMock ).getFile( path.toString() );
+    doReturn( null ).when( repositoryMock ).getFileById( fileId );
+    RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
+    GenericFilePath newPath = repositoryProvider.getNewPath( destPath, path.getLastSegment() );
+    doReturn( false ).when( fileServiceMock ).doesExist( encodeRepositoryPath( path.toString() ) );
+    doReturn( false ).when( fileServiceMock ).doesExist( encodeRepositoryPath( newPath.toString() ) );
+
+    assertThrows( NotFoundException.class, () -> repositoryProvider.moveFile( path, destPath ) );
+    verify( fileServiceMock ).doMoveFiles( any(), any() );
+  }
+
+  @Test
+  void testMoveFilesUnifiedRepositoryAccessDeniedExceptionResourceAccessDeniedOnSource() throws Exception {
+    String fileId = "8b69da2b-2a10-4a82-89bc-a376e52d5482";
+    GenericFilePath path = GenericFilePath.parse( "/home/admin/" + fileId + "/PAZReport.xanalyzer" );
+    GenericFilePath destPath = GenericFilePath.parse( "/archive/" );
+
+    FileService fileServiceMock = mock( FileService.class );
+    doReturn( "true" ).when( fileServiceMock ).doGetCanCreate();
+    doThrow( new UnifiedRepositoryAccessDeniedException() ).when( fileServiceMock ).doMoveFiles( any(), any() );
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    doReturn( createNativeFile( fileId, path, false ) ).when( repositoryMock ).getFile( path.toString() );
+    doReturn( createNativeFile( fileId, path, false ) ).when( repositoryMock ).getFileById( fileId );
+    RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
+    GenericFilePath newPath = repositoryProvider.getNewPath( destPath, path.getLastSegment() );
+    doReturn( true ).when( fileServiceMock ).doesExist( encodeRepositoryPath( path.toString() ) );
+    doReturn( false ).when( fileServiceMock ).doesExist( encodeRepositoryPath( newPath.toString() ) );
+    doReturn( false ).when( repositoryMock ).hasAccess( eq( path.toString() ), any() );
+
+    assertThrows( ResourceAccessDeniedException.class, () -> repositoryProvider.moveFile( path, destPath ) );
+    verify( fileServiceMock ).doMoveFiles( any(), any() );
+  }
+
+  @Test
+  void testMoveFilesUnifiedRepositoryAccessDeniedExceptionResourceAccessDeniedOnDestination() throws Exception {
+    String fileId = "8b69da2b-2a10-4a82-89bc-a376e52d5482";
+    GenericFilePath path = GenericFilePath.parse( "/home/admin/" + fileId + "/PAZReport.xanalyzer" );
+    GenericFilePath destPath = GenericFilePath.parse( "/archive/" );
+
+    FileService fileServiceMock = mock( FileService.class );
+    doReturn( "true" ).when( fileServiceMock ).doGetCanCreate();
+    doThrow( new UnifiedRepositoryAccessDeniedException() ).when( fileServiceMock ).doMoveFiles( any(), any() );
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    doReturn( createNativeFile( fileId, path, false ) ).when( repositoryMock ).getFile( path.toString() );
+    RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
+    GenericFilePath newPath = repositoryProvider.getNewPath( destPath, path.getLastSegment() );
+    doReturn( true ).when( fileServiceMock ).doesExist( encodeRepositoryPath( path.toString() ) );
+    doReturn( false ).when( fileServiceMock ).doesExist( encodeRepositoryPath( newPath.toString() ) );
+    doReturn( true ).when( repositoryMock ).hasAccess( eq( path.toString() ), any() );
+    doReturn( false ).when( repositoryMock ).hasAccess( eq( destPath.toString() ), any() );
+
+    assertThrows( ResourceAccessDeniedException.class, () -> repositoryProvider.moveFile( path, destPath ) );
     verify( fileServiceMock ).doMoveFiles( any(), any() );
   }
 

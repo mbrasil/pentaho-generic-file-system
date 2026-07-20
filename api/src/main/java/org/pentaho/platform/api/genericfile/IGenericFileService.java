@@ -11,7 +11,6 @@
  ******************************************************************************/
 
 
-
 package org.pentaho.platform.api.genericfile;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
@@ -881,12 +880,13 @@ public interface IGenericFileService {
    *                          trash (deleted).
    * @param destinationFolder The path of the destination folder. This path must not refer to a folder in the trash
    *                          (deleted).
-   * @throws AccessControlException   If the current user cannot perform this operation.
-   * @throws InvalidPathException     If the destination path is not valid.
-   * @throws NotFoundException        If either path does not exist or does refer to an item in the trash
-   *                                  (deleted), or the current user is not allowed to access it.
-   * @throws ConflictException        If the file or folder to be moved already exists on the destination folder.
-   * @throws OperationFailedException If the operation fails for some other (checked) reason.
+   * @throws ResourceAccessDeniedException If the current user cannot write to the given path or destination folder.
+   * @throws AccessControlException        If the current user cannot perform this operation.
+   * @throws InvalidPathException          If the destination path is not valid.
+   * @throws NotFoundException             If either path does not exist or does refer to an item in the trash
+   *                                       (deleted), or the current user is not allowed to access it.
+   * @throws ConflictException             If the file or folder to be moved already exists on the destination folder.
+   * @throws OperationFailedException      If the operation fails for some other (checked) reason.
    */
   void moveFile( @NonNull GenericFilePath path, @NonNull GenericFilePath destinationFolder )
     throws OperationFailedException;
@@ -902,14 +902,15 @@ public interface IGenericFileService {
    *                          refer to an item in the trash (deleted).
    * @param destinationFolder The string representation of the folder's path to move the files to. This path must not
    *                          refer to a folder in the trash (deleted).
-   * @throws AccessControlException    If the current user cannot perform this operation.
-   * @throws InvalidOperationException If the {@code destinationFolder} is not valid.
-   * @throws InvalidPathException      If either path's string representation is not valid, according to
-   *                                   {@link GenericFilePath#parseRequired(String)}, or if the destination path
-   *                                   is not valid.
-   * @throws NotFoundException         If either path does not exist or does refer to an item in the
-   *                                   trash (deleted), or the current user is not allowed to access it.
-   * @throws OperationFailedException  If the operation fails for some other (checked) reason.
+   * @throws ResourceAccessDeniedException If the current user cannot write to the given path or destination folder.
+   * @throws AccessControlException        If the current user cannot perform this operation.
+   * @throws InvalidOperationException     If the {@code destinationFolder} is not valid.
+   * @throws InvalidPathException          If either path's string representation is not valid, according to
+   *                                       {@link GenericFilePath#parseRequired(String)}, or if the destination path
+   *                                       is not valid.
+   * @throws NotFoundException             If either path does not exist or does refer to an item in the
+   *                                       trash (deleted), or the current user is not allowed to access it.
+   * @throws OperationFailedException      If the operation fails for some other (checked) reason.
    * @see IGenericFileService#moveFile(GenericFilePath, GenericFilePath)
    */
   default void moveFile( @NonNull String path, @NonNull String destinationFolder ) throws OperationFailedException {

@@ -945,6 +945,20 @@ public class RepositoryFileProvider extends BaseGenericFileProvider<RepositoryFi
       throw new NotFoundException( String.format( "Destination folder not found '%s'.", destinationFolder ),
         destinationFolder, e );
     } catch ( UnifiedRepositoryAccessDeniedException e ) {
+      if ( !fileService.doesExist( pathToString( path ) ) ) {
+        throw new NotFoundException( String.format( "Path not found '%s'.", path ), path, e );
+      }
+
+      if ( !canWrite( path ) ) {
+        throw new ResourceAccessDeniedException( String.format( "User is not authorized to move '%s'.", path ), path,
+          e );
+      }
+
+      if ( !canWrite( destinationFolder ) ) {
+        throw new ResourceAccessDeniedException(
+          String.format( "User is not authorized to write to '%s'.", destinationFolder ), destinationFolder, e );
+      }
+
       throw new AccessControlException( e );
     } catch ( InternalError e ) {
       throw new OperationFailedException( e );
