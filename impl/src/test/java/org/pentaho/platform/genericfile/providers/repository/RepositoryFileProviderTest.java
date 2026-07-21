@@ -1066,16 +1066,71 @@ class RepositoryFileProviderTest {
   void testDeleteFilePermanentlyOperationFailed() throws Exception {
     GenericFilePath path =
       GenericFilePath.parse( "/home/admin/.trash/pho:8b69da2b-2a10-4a82-89bc-a376e52d5482" + "/PAZReport.xanalyzer" );
+    String fileId = "8b69da2b-2a10-4a82-89bc-a376e52d5482";
 
     FileService fileServiceMock = mock( FileService.class );
     doNothing().when( fileServiceMock ).doDeleteFilesPermanent( any() );
     IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    RepositoryFile nativeFile = createNativeFile( fileId, path, false );
+    doReturn( nativeFile ).when( repositoryMock ).getFileById( fileId );
+    doReturn( true ).when( repositoryMock ).hasAccess( eq( path.toString() ), any() );
     RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
 
     doThrow( new OperationFailedException() ).when( fileServiceMock ).doDeleteFilesPermanent( any() );
 
     assertThrows( OperationFailedException.class, () -> repositoryProvider.deleteFilePermanently( path ) );
     verify( fileServiceMock ).doDeleteFilesPermanent( repositoryProvider.getTrashFileId( path ) );
+  }
+
+  @Test
+  void testDeleteFilePermanentlyAccessControlException() throws Exception {
+    GenericFilePath path =
+      GenericFilePath.parse( "/home/admin/.trash/pho:8b69da2b-2a10-4a82-89bc-a376e52d5482" + "/PAZReport.xanalyzer" );
+
+    FileService fileServiceMock = mock( FileService.class );
+    doThrow( new UnifiedRepositoryAccessDeniedException() ).when( fileServiceMock ).doDeleteFilesPermanent( any() );
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
+
+    assertThrows( AccessControlException.class, () -> repositoryProvider.deleteFilePermanently( path ) );
+    verify( repositoryMock, never() ).getFileById( anyString() );
+  }
+
+  @Test
+  void testDeleteFilePermanentlyNotFoundAfterBackendFailure() throws Exception {
+    GenericFilePath path =
+      GenericFilePath.parse( "/home/admin/.trash/pho:8b69da2b-2a10-4a82-89bc-a376e52d5482" + "/PAZReport.xanalyzer" );
+    String fileId = "8b69da2b-2a10-4a82-89bc-a376e52d5482";
+
+    FileService fileServiceMock = mock( FileService.class );
+    doThrow( new RuntimeException( "delete failed" ) ).when( fileServiceMock ).doDeleteFilesPermanent( any() );
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    doReturn( null ).when( repositoryMock ).getFileById( fileId );
+    RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
+
+    NotFoundException ex =
+      assertThrows( NotFoundException.class, () -> repositoryProvider.deleteFilePermanently( path ) );
+
+    assertEquals( String.format( "Path not found '%s'.", path ), ex.getMessage() );
+    verify( repositoryMock, never() ).hasAccess( anyString(), any() );
+  }
+
+  @Test
+  void testDeleteFilePermanentlyResourceAccessDeniedException() throws Exception {
+    GenericFilePath path =
+      GenericFilePath.parse( "/home/admin/.trash/pho:8b69da2b-2a10-4a82-89bc-a376e52d5482" + "/PAZReport.xanalyzer" );
+    String fileId = "8b69da2b-2a10-4a82-89bc-a376e52d5482";
+
+    FileService fileServiceMock = mock( FileService.class );
+    doThrow( new RuntimeException( "delete failed" ) ).when( fileServiceMock ).doDeleteFilesPermanent( any() );
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    RepositoryFile nativeFile = createNativeFile( fileId, path, false );
+    doReturn( nativeFile ).when( repositoryMock ).getFileById( fileId );
+    doReturn( false ).when( repositoryMock ).hasAccess( eq( path.toString() ), any() );
+    RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
+
+    assertThrows( ResourceAccessDeniedException.class, () -> repositoryProvider.deleteFilePermanently( path ) );
+    verify( repositoryMock ).getFileById( fileId );
   }
 
   @Test
@@ -1251,6 +1306,72 @@ class RepositoryFileProviderTest {
     RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
 
     assertThrows( AccessControlException.class, () -> repositoryProvider.deleteFile( path, permanent ) );
+
+    if ( permanent ) {
+      verify( fileServiceMock, never() ).doDeleteFiles( anyString() );
+      verify( fileServiceMock ).doDeleteFilesPermanent( fileId );
+    } else {
+      verify( fileServiceMock ).doDeleteFiles( fileId );
+      verify( fileServiceMock, never() ).doDeleteFilesPermanent( anyString() );
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource( booleans = { true, false } )
+  void testDeleteFileResourceAccessDenied( boolean permanent ) throws Exception {
+    String fileId = "8b69da2b-2a10-4a82-89bc-a376e52d5482";
+    GenericFilePath path = GenericFilePath.parse( "/home/admin/" + fileId + "/PAZReport.xanalyzer" );
+
+    FileService fileServiceMock = mock( FileService.class );
+
+    if ( permanent ) {
+      doThrow( UnifiedRepositoryException.class ).when( fileServiceMock ).doDeleteFilesPermanent( any() );
+    } else {
+      doThrow( UnifiedRepositoryException.class ).when( fileServiceMock ).doDeleteFiles( any() );
+    }
+
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    RepositoryFile nativeFile = createNativeFile( fileId, path, false );
+    doReturn( nativeFile ).when( repositoryMock ).getFile( any() );
+    doReturn( nativeFile ).when( repositoryMock ).getFileById( fileId );
+    doReturn( false ).when( repositoryMock ).hasAccess( eq( path.toString() ), any() );
+    RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
+
+    assertThrows( ResourceAccessDeniedException.class, () -> repositoryProvider.deleteFile( path, permanent ) );
+
+    if ( permanent ) {
+      verify( fileServiceMock, never() ).doDeleteFiles( anyString() );
+      verify( fileServiceMock ).doDeleteFilesPermanent( fileId );
+    } else {
+      verify( fileServiceMock ).doDeleteFiles( fileId );
+      verify( fileServiceMock, never() ).doDeleteFilesPermanent( anyString() );
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource( booleans = { true, false } )
+  void testDeleteFileFallsBackToOperationFailed( boolean permanent ) throws Exception {
+    String fileId = "8b69da2b-2a10-4a82-89bc-a376e52d5482";
+    GenericFilePath path = GenericFilePath.parse( "/home/admin/" + fileId + "/PAZReport.xanalyzer" );
+
+    FileService fileServiceMock = mock( FileService.class );
+
+    if ( permanent ) {
+      doThrow( UnifiedRepositoryException.class ).when( fileServiceMock ).doDeleteFilesPermanent( any() );
+    } else {
+      doThrow( UnifiedRepositoryException.class ).when( fileServiceMock ).doDeleteFiles( any() );
+    }
+
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    RepositoryFile nativeFile = createNativeFile( fileId, path, false );
+    doReturn( nativeFile ).when( repositoryMock ).getFile( any() );
+    doReturn( nativeFile ).when( repositoryMock ).getFileById( fileId );
+    doReturn( true ).when( repositoryMock ).hasAccess( eq( path.toString() ), any() );
+    RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
+
+    OperationFailedException ex =
+      assertThrows( OperationFailedException.class, () -> repositoryProvider.deleteFile( path, permanent ) );
+    assertEquals( OperationFailedException.class, ex.getClass() );
 
     if ( permanent ) {
       verify( fileServiceMock, never() ).doDeleteFiles( anyString() );

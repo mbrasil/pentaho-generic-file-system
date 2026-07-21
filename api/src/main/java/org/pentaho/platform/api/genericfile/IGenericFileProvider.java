@@ -269,11 +269,12 @@ public interface IGenericFileProvider<T extends IGenericFile> {
    * Permanently deletes a file, given its path.
    *
    * @param path The file path to be permanently deleted. This path must refer to an item in the trash (deleted).
-   * @throws AccessControlException   If the current user cannot perform this operation.
-   * @throws InvalidPathException     If the specified path is not valid.
-   * @throws NotFoundException        If the specified path does not exist, or does not refer to an item in the trash
-   *                                  (deleted), or the current user is not allowed to access it.
-   * @throws OperationFailedException If the operation fails for some other (checked) reason.
+   * @throws ResourceAccessDeniedException If the current user cannot delete the specified path.
+   * @throws AccessControlException        If the current user cannot perform this operation.
+   * @throws InvalidPathException          If the specified path is not valid.
+   * @throws NotFoundException             If the specified path does not exist, or does not refer to an item in the
+   *                                       trash (deleted), or the current user is not allowed to access it.
+   * @throws OperationFailedException      If the operation fails for some other (checked) reason.
    * @see IGenericFileService#deleteFilePermanently(GenericFilePath)
    */
   void deleteFilePermanently( @NonNull GenericFilePath path ) throws OperationFailedException;
@@ -284,10 +285,11 @@ public interface IGenericFileProvider<T extends IGenericFile> {
    *
    * @param path      The file path to be deleted. This path must not refer to an item in the trash (deleted).
    * @param permanent If {@code true}, the file is permanently deleted; if {@code false}, the file is sent to the trash.
-   * @throws AccessControlException   If the current user cannot perform this operation.
-   * @throws NotFoundException        If the specified path does not exist, or does refer to an item in the trash
-   *                                  (deleted), or the current user is not allowed to access it.
-   * @throws OperationFailedException If the operation fails for some other (checked) reason.
+   * @throws ResourceAccessDeniedException If the current user cannot delete the specified path.
+   * @throws AccessControlException        If the current user cannot perform this operation.
+   * @throws NotFoundException             If the specified path does not exist, or does refer to an item in the trash
+   *                                       (deleted), or the current user is not allowed to access it.
+   * @throws OperationFailedException      If the operation fails for some other (checked) reason.
    * @see IGenericFileService#deleteFile(GenericFilePath, boolean)
    */
   void deleteFile( @NonNull GenericFilePath path, boolean permanent ) throws OperationFailedException;

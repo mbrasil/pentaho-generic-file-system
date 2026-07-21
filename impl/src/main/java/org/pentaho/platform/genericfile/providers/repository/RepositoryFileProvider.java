@@ -759,12 +759,24 @@ public class RepositoryFileProvider extends BaseGenericFileProvider<RepositoryFi
     return unifiedRepository.hasAccess( path.toString(), getRepositoryPermissions( permissions ) );
   }
 
+  @SuppressWarnings( "BooleanMethodIsAlwaysInverted" )
   private boolean canWrite( @NonNull GenericFilePath path ) {
     return hasAccess( path, EnumSet.of( GenericFilePermission.WRITE ) );
   }
 
+  @SuppressWarnings( "BooleanMethodIsAlwaysInverted" )
+  private boolean canDelete( @NonNull GenericFilePath path ) {
+    return hasAccess( path, EnumSet.of( GenericFilePermission.DELETE ) );
+  }
+
+  @SuppressWarnings( "BooleanMethodIsAlwaysInverted" )
   private boolean canWrite( @NonNull String path ) throws InvalidPathException {
     return canWrite( GenericFilePath.parseRequired( path ) );
+  }
+
+  @SuppressWarnings( "BooleanMethodIsAlwaysInverted" )
+  private boolean canDelete( @NonNull String path ) throws InvalidPathException {
+    return canDelete( GenericFilePath.parseRequired( path ) );
   }
 
   private EnumSet<RepositoryFilePermission> getRepositoryPermissions( EnumSet<GenericFilePermission> permissions ) {
@@ -814,7 +826,20 @@ public class RepositoryFileProvider extends BaseGenericFileProvider<RepositoryFi
 
     try {
       fileService.doDeleteFilesPermanent( fileId );
+    } catch ( UnifiedRepositoryAccessDeniedException e ) {
+      throw new AccessControlException( e );
     } catch ( Exception e ) {
+      org.pentaho.platform.api.repository2.unified.RepositoryFile file = getNativeFileById( fileId );
+
+      if ( file == null ) {
+        throw new NotFoundException( String.format( "Path not found '%s'.", path ), path, e );
+      }
+
+      if ( !canDelete( file.getPath() ) ) {
+        throw new ResourceAccessDeniedException( String.format( "User is not authorized to delete '%s'.", path ), path,
+          e );
+      }
+
       throw new OperationFailedException( e );
     }
   }
@@ -832,6 +857,17 @@ public class RepositoryFileProvider extends BaseGenericFileProvider<RepositoryFi
     } catch ( UnifiedRepositoryAccessDeniedException e ) {
       throw new AccessControlException( e );
     } catch ( Exception e ) {
+      org.pentaho.platform.api.repository2.unified.RepositoryFile file = getNativeFileById( fileId );
+
+      if ( file == null ) {
+        throw new NotFoundException( String.format( "Path not found '%s'.", path ), path, e );
+      }
+
+      if ( !canDelete( file.getPath() ) ) {
+        throw new ResourceAccessDeniedException( String.format( "User is not authorized to delete '%s'.", path ), path,
+          e );
+      }
+
       throw new OperationFailedException( e );
     }
   }
