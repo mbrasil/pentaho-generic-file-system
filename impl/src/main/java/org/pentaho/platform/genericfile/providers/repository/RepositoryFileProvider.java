@@ -209,6 +209,15 @@ public class RepositoryFileProvider extends BaseGenericFileProvider<RepositoryFi
       throw new AccessControlException( e );
     } catch ( FileService.InvalidNameException e ) {
       throw new InvalidPathException();
+    } catch ( UnifiedRepositoryException e ) {
+      GenericFilePath deniedPath = findFirstNonWritablePath( path );
+
+      if ( deniedPath != null ) {
+        throw new ResourceAccessDeniedException(
+          String.format( "User is not authorized to create folder at '%s'.", deniedPath ), path, e );
+      }
+
+      throw new OperationFailedException( e );
     }
   }
 
@@ -777,6 +786,29 @@ public class RepositoryFileProvider extends BaseGenericFileProvider<RepositoryFi
   @SuppressWarnings( "BooleanMethodIsAlwaysInverted" )
   private boolean canDelete( @NonNull String path ) throws InvalidPathException {
     return canDelete( GenericFilePath.parseRequired( path ) );
+  }
+
+  @Nullable
+  private GenericFilePath findFirstNonWritablePath( @NonNull GenericFilePath path ) throws InvalidPathException {
+    List<String> segments = path.getSegments();
+
+    // Build from root to leaf so we return the shallowest denied ancestor.
+    GenericFilePath current = GenericFilePath.parseRequired( ROOT_PATH );
+
+    // If root itself is denied, return it.
+    if ( !canWrite( current ) ) {
+      return current;
+    }
+
+    for ( String segment : segments ) {
+      current = current.child( segment );
+
+      if ( !canWrite( current ) ) {
+        return current;
+      }
+    }
+
+    return null;
   }
 
   private EnumSet<RepositoryFilePermission> getRepositoryPermissions( EnumSet<GenericFilePermission> permissions ) {

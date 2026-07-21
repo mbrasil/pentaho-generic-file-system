@@ -3506,6 +3506,89 @@ class RepositoryFileProviderTest {
     assertThrows( InvalidPathException.class, () -> repositoryProvider.createFolder( path ) );
     verify( fileServiceMock ).doCreateDirSafe( encodeRepositoryPath( path.toString() ) );
   }
+
+  @Test
+  void testCreateFolderResourceAccessDeniedOnAncestor() throws Exception {
+    GenericFilePath path = GenericFilePath.parse( "/public/newFolder/sub" );
+
+    FileService fileServiceMock = mock( FileService.class );
+    doThrow( new UnifiedRepositoryException() ).when( fileServiceMock )
+      .doCreateDirSafe( encodeRepositoryPath( path.toString() ) );
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    doReturn( true ).when( repositoryMock ).hasAccess( eq( "/public" ), any() );
+    doReturn( false ).when( repositoryMock ).hasAccess( eq( "/public/newFolder" ), any() );
+    RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
+
+    assertThrows( ResourceAccessDeniedException.class, () -> repositoryProvider.createFolder( path ) );
+    verify( fileServiceMock ).doCreateDirSafe( encodeRepositoryPath( path.toString() ) );
+  }
+
+  @Test
+  void testCreateFolderResourceAccessDeniedWhenRootIsNotWritable() throws Exception {
+    GenericFilePath path = GenericFilePath.parse( "/public/newFolder/sub" );
+
+    FileService fileServiceMock = mock( FileService.class );
+    doThrow( new UnifiedRepositoryException() ).when( fileServiceMock )
+      .doCreateDirSafe( encodeRepositoryPath( path.toString() ) );
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    doReturn( false ).when( repositoryMock ).hasAccess( eq( "/" ), any() );
+    RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
+
+    assertThrows( ResourceAccessDeniedException.class, () -> repositoryProvider.createFolder( path ) );
+    verify( fileServiceMock ).doCreateDirSafe( encodeRepositoryPath( path.toString() ) );
+  }
+
+  @Test
+  void testCreateFolderResourceAccessDeniedWhenFirstChildIsNotWritable() throws Exception {
+    GenericFilePath path = mock( GenericFilePath.class );
+    doReturn( List.of( "public", "newFolder", "sub" ) ).when( path ).getSegments();
+
+    FileService fileServiceMock = mock( FileService.class );
+    doThrow( new UnifiedRepositoryException() ).when( fileServiceMock )
+      .doCreateDirSafe( anyString() );
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    doReturn( true ).when( repositoryMock ).hasAccess( eq( "/" ), any() );
+    doReturn( false ).when( repositoryMock ).hasAccess( eq( "/public" ), any() );
+    RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
+
+    assertThrows( ResourceAccessDeniedException.class, () -> repositoryProvider.createFolder( path ) );
+    verify( fileServiceMock ).doCreateDirSafe( anyString() );
+  }
+
+  @Test
+  void testCreateFolderFallsBackToOperationFailed() throws Exception {
+    GenericFilePath path = GenericFilePath.parse( "/public/newFolder/sub" );
+
+    FileService fileServiceMock = mock( FileService.class );
+    doThrow( new UnifiedRepositoryException() ).when( fileServiceMock )
+      .doCreateDirSafe( encodeRepositoryPath( path.toString() ) );
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    doReturn( true ).when( repositoryMock ).hasAccess( anyString(), any() );
+    RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
+
+    InvalidPathException ex =
+      assertThrows( InvalidPathException.class, () -> repositoryProvider.createFolder( path ) );
+    assertEquals( InvalidPathException.class, ex.getClass() );
+    verify( fileServiceMock ).doCreateDirSafe( encodeRepositoryPath( path.toString() ) );
+  }
+
+  @Test
+  void testCreateFolderFallsBackToOperationFailedWhenAllAncestorsWritable() throws Exception {
+    GenericFilePath path = mock( GenericFilePath.class );
+    doReturn( List.of( "public", "newFolder", "sub" ) ).when( path ).getSegments();
+
+    FileService fileServiceMock = mock( FileService.class );
+    doThrow( new UnifiedRepositoryException() ).when( fileServiceMock )
+      .doCreateDirSafe( anyString() );
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    doReturn( true ).when( repositoryMock ).hasAccess( anyString(), any() );
+    RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
+
+    OperationFailedException ex =
+      assertThrows( OperationFailedException.class, () -> repositoryProvider.createFolder( path ) );
+    assertEquals( OperationFailedException.class, ex.getClass() );
+    verify( fileServiceMock ).doCreateDirSafe( anyString() );
+  }
   // endregion
 
   // region createFile

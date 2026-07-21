@@ -133,14 +133,15 @@ public interface IGenericFileProvider<T extends IGenericFile> {
    *
    * @param path The path of the generic folder to create.
    * @return {@code true}, if the folder did not exist and was created; {@code false}, if the folder already existed.
-   * @throws AccessControlException    If the current user cannot perform this operation.
-   * @throws InvalidPathException      If the folder path is not valid.
-   * @throws InvalidOperationException If the path, or one of its prefixes, does not exist and cannot be created using
-   *                                   this service (e.g. connections, buckets);
-   *                                   if the path or its longest existing prefix does not reference a folder;
-   *                                   if the path does not exist and the current user is not allowed to create folders
-   *                                   on the folder denoted by its longest existing prefix.
-   * @throws OperationFailedException  If the operation fails for some other (checked) reason.
+   * @throws ResourceAccessDeniedException If the current user cannot create a folder in the specified path.
+   * @throws AccessControlException        If the current user cannot perform this operation.
+   * @throws InvalidPathException          If the folder path is not valid.
+   * @throws InvalidOperationException     If the path, or one of its prefixes, does not exist and cannot be created
+   *                                       using this service (e.g. connections, buckets);
+   *                                       if the path or its longest existing prefix does not reference a folder;
+   *                                       if the path does not exist and the current user is not allowed to create
+   *                                       folders on the folder denoted by its longest existing prefix.
+   * @throws OperationFailedException      If the operation fails for some other (checked) reason.
    * @see #clearTreeCache()
    * @see IGenericFileService#createFolder(GenericFilePath)
    */
