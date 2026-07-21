@@ -272,6 +272,24 @@ public class RepositoryFileProvider extends BaseGenericFileProvider<RepositoryFi
         file = unifiedRepository.createFile( parentFile.getId(), newFile, fileData, FILE_CREATE_MSG );
       }
     } catch ( UnifiedRepositoryAccessDeniedException e ) {
+      if ( fileService.doesExist( path.toString() ) && !canWrite( path ) ) {
+        throw new ResourceAccessDeniedException( String.format( "User is not authorized to write to '%s'.", path ),
+          path, e );
+      }
+
+      GenericFilePath parentPath = path.getParent();
+
+      if ( parentPath != null ) {
+        if ( !fileService.doesExist( parentPath.toString() ) ) {
+          throw new NotFoundException( String.format( "Parent folder not found '%s'.", parentPath ), parentPath, e );
+        }
+
+        if ( !canWrite( parentPath ) ) {
+          throw new ResourceAccessDeniedException(
+            String.format( "User is not authorized to write to '%s'.", parentPath ), parentPath, e );
+        }
+      }
+
       throw new AccessControlException( e );
     } catch ( UnifiedRepositoryException | IOException e ) {
       throw new OperationFailedException( e );
@@ -306,6 +324,24 @@ public class RepositoryFileProvider extends BaseGenericFileProvider<RepositoryFi
         throw new NotFoundException( "Unable to update content of " + path + " in the repository." );
       }
     } catch ( UnifiedRepositoryAccessDeniedException e ) {
+      if ( fileService.doesExist( path.toString() ) && !canWrite( path ) ) {
+        throw new ResourceAccessDeniedException( String.format( "User is not authorized to write to '%s'.", path ),
+          path, e );
+      }
+
+      GenericFilePath parentPath = path.getParent();
+
+      if ( parentPath != null ) {
+        if ( !fileService.doesExist( parentPath.toString() ) ) {
+          throw new NotFoundException( String.format( "Parent folder not found '%s'.", parentPath ), parentPath, e );
+        }
+
+        if ( !canWrite( parentPath ) ) {
+          throw new ResourceAccessDeniedException(
+            String.format( "User is not authorized to write to '%s'.", parentPath ), parentPath, e );
+        }
+      }
+
       throw new AccessControlException( e );
     } catch ( UnifiedRepositoryException | IOException e ) {
       throw new OperationFailedException( e );

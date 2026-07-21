@@ -267,20 +267,22 @@ public interface IGenericFileService {
    * @param path              The path of the generic file to create.
    * @param content           The content to write to the file as an InputStream.
    * @param createFileOptions The options for creating the file, includes the overwrite flag.
-   * @throws AccessControlException    If the current user cannot perform this operation.
-   * @throws InvalidPathException      If the file path is not valid.
-   * @throws InvalidOperationException If the path, or one of its prefixes, does not exist and cannot be created
-   *                                   using this service (e.g. connections, buckets);
-   *                                   if the path exists but references a folder, or its longest existing prefix
-   *                                   does not reference a folder;
-   *                                   if the path does not exist and the file type is not accepted;
-   * @throws NotFoundException         if the path does not exist and the current user is not allowed to create
-   *                                   files on the folder denoted by its longest existing prefix, or the path exists
-   *                                   and the user is not allowed to edit it when the {@code overwrite} flag is
-   *                                   set to {@code true}.
-   * @throws ConflictException         If the file with the new name already exists and the {@code overwrite} flag is
-   *                                   set to {@code false}.
-   * @throws OperationFailedException  If the operation fails for some other (checked) reason.
+   * @throws ResourceAccessDeniedException If the current user cannot create a file in the specified path, or its
+   *                                       parent folder.
+   * @throws AccessControlException        If the current user cannot perform this operation.
+   * @throws InvalidPathException          If the file path is not valid.
+   * @throws InvalidOperationException     If the path, or one of its prefixes, does not exist and cannot be created
+   *                                       using this service (e.g. connections, buckets);
+   *                                       if the path exists but references a folder, or its longest existing prefix
+   *                                       does not reference a folder;
+   *                                       if the path does not exist and the file type is not accepted;
+   * @throws NotFoundException             If the path, or its parent folder, does not exist and the current user is
+   *                                       not allowed to create files on the folder denoted by its longest existing
+   *                                       prefix, or the path exists and the user is not allowed to edit it when the
+   *                                       {@code overwrite} flag is set to {@code true}.
+   * @throws ConflictException             If the file with the new name already exists and the {@code overwrite}
+   *                                       flag is set to {@code false}.
+   * @throws OperationFailedException      If the operation fails for some other (checked) reason.
    */
   void createFile( @NonNull GenericFilePath path,
                    @NonNull InputStream content,
@@ -302,20 +304,22 @@ public interface IGenericFileService {
    * @param path              The string representation of the path of the generic file.
    * @param content           The content to write to the file as an InputStream.
    * @param createFileOptions The options for creating the file, includes the overwrite flag.
-   * @throws AccessControlException    If the current user cannot perform this operation.
-   * @throws InvalidPathException      If the file path is not valid.
-   * @throws InvalidOperationException If the path, or one of its prefixes, does not exist and cannot be created
-   *                                   using this service (e.g. connections, buckets);
-   *                                   if the path exists but references a folder, or its longest existing prefix
-   *                                   does not reference a folder;
-   *                                   if the path does not exist and the file type is not accepted;
-   * @throws NotFoundException         if the path does not exist and the current user is not allowed to create
-   *                                   files on the folder denoted by its longest existing prefix, or the path exists
-   *                                   and the user is not allowed to edit it when the {@code overwrite} flag is
-   *                                   set to {@code true}.
-   * @throws ConflictException         If the file with the new name already exists and the {@code overwrite} flag is
-   *                                   set to {@code false}.
-   * @throws OperationFailedException  If the operation fails for some other (checked) reason.
+   * @throws ResourceAccessDeniedException If the current user cannot create a file in the specified path, or its
+   *                                       parent folder.
+   * @throws AccessControlException        If the current user cannot perform this operation.
+   * @throws InvalidPathException          If the file path is not valid.
+   * @throws InvalidOperationException     If the path, or one of its prefixes, does not exist and cannot be created
+   *                                       using this service (e.g. connections, buckets);
+   *                                       if the path exists but references a folder, or its longest existing prefix
+   *                                       does not reference a folder;
+   *                                       if the path does not exist and the file type is not accepted;
+   * @throws NotFoundException             If the path, or its parent folder, does not exist and the current user is
+   *                                       not allowed to create files on the folder denoted by its longest existing
+   *                                       prefix, or the path exists and the user is not allowed to edit it when the
+   *                                       {@code overwrite} flag is set to {@code true}.
+   * @throws ConflictException             If the file with the new name already exists and the {@code overwrite}
+   *                                       flag is set to {@code false}.
+   * @throws OperationFailedException      If the operation fails for some other (checked) reason.
    * @see IGenericFileService#createFile(GenericFilePath, InputStream, CreateFileOptions)
    */
   default void createFile( @NonNull String path,
@@ -330,12 +334,14 @@ public interface IGenericFileService {
    *
    * @param path    The path of the file to update.
    * @param content The new content to write to the file as an InputStream.
-   * @throws AccessControlException    If the current user cannot perform this operation.
-   * @throws InvalidPathException      If the file path is not valid.
-   * @throws InvalidOperationException If the path is a folder.
-   * @throws NotFoundException         If the specified file does not exist, or the current user is not allowed
-   *                                   to access it.
-   * @throws OperationFailedException  If the operation fails for some other (checked) reason.
+   * @throws ResourceAccessDeniedException If the current user cannot write to the file in the specified path, or its
+   *                                       parent folder.
+   * @throws AccessControlException        If the current user cannot perform this operation.
+   * @throws InvalidPathException          If the file path is not valid.
+   * @throws InvalidOperationException     If the path is a folder.
+   * @throws NotFoundException             If the specified file, or its parent folder, does not exist, or the
+   *                                       current user is not allowed to access it.
+   * @throws OperationFailedException      If the operation fails for some other (checked) reason.
    */
   void setFileContent( @NonNull GenericFilePath path, @NonNull InputStream content ) throws OperationFailedException;
 
@@ -348,14 +354,16 @@ public interface IGenericFileService {
    *
    * @param path    The string representation of the path of the file to update.
    * @param content The new content to write to the file as an InputStream.
-   * @throws AccessControlException    If the current user cannot perform this operation.
-   * @throws InvalidPathException      If the file path is not valid, or if the specified path's string
-   *                                   representation is not valid, according to
-   *                                   {@link GenericFilePath#parseRequired(String)}.
-   * @throws InvalidOperationException If the path is a folder.
-   * @throws NotFoundException         If the specified file does not exist, or the current user is not allowed
-   *                                   to access it.
-   * @throws OperationFailedException  If the operation fails for some other (checked) reason.
+   * @throws ResourceAccessDeniedException If the current user cannot write to the file in the specified path, or its
+   *                                       parent folder.
+   * @throws AccessControlException        If the current user cannot perform this operation.
+   * @throws InvalidPathException          If the file path is not valid, or if the specified path's string
+   *                                       representation is not valid, according to
+   *                                       {@link GenericFilePath#parseRequired(String)}.
+   * @throws InvalidOperationException     If the path is a folder.
+   * @throws NotFoundException             If the specified file, or its parent folder, does not exist, or the
+   *                                       current user is not allowed to access it.
+   * @throws OperationFailedException      If the operation fails for some other (checked) reason.
    * @see IGenericFileService#setFileContent(GenericFilePath, InputStream)
    */
   default void setFileContent( @NonNull String path, @NonNull InputStream content ) throws OperationFailedException {
