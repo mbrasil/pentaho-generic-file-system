@@ -815,6 +815,11 @@ public class RepositoryFileProvider extends BaseGenericFileProvider<RepositoryFi
   }
 
   @SuppressWarnings( "BooleanMethodIsAlwaysInverted" )
+  private boolean canManageAcl( @NonNull GenericFilePath path ) {
+    return hasAccess( path, EnumSet.of( GenericFilePermission.ACL_MANAGEMENT ) );
+  }
+
+  @SuppressWarnings( "BooleanMethodIsAlwaysInverted" )
   private boolean canWrite( @NonNull String path ) throws InvalidPathException {
     return canWrite( GenericFilePath.parseRequired( path ) );
   }
@@ -822,6 +827,11 @@ public class RepositoryFileProvider extends BaseGenericFileProvider<RepositoryFi
   @SuppressWarnings( "BooleanMethodIsAlwaysInverted" )
   private boolean canDelete( @NonNull String path ) throws InvalidPathException {
     return canDelete( GenericFilePath.parseRequired( path ) );
+  }
+
+  @SuppressWarnings( "BooleanMethodIsAlwaysInverted" )
+  private boolean canManageAcl( @NonNull String path ) throws InvalidPathException {
+    return canManageAcl( GenericFilePath.parseRequired( path ) );
   }
 
   @Nullable
@@ -1105,8 +1115,19 @@ public class RepositoryFileProvider extends BaseGenericFileProvider<RepositoryFi
   @Override
   public void setFileMetadata( @NonNull GenericFilePath path, @NonNull IGenericFileMetadata metadata )
     throws OperationFailedException {
+    if ( !fileService.doesExist( pathToString( path ) ) ) {
+      throw new NotFoundException( String.format( "Path not found '%s'.", path ), path );
+    }
+
     try {
       fileService.doSetMetadata( pathToString( path ), convertToNativeFileMetadata( metadata ) );
+    } catch ( UnifiedRepositoryAccessDeniedException e ) {
+      if ( !canWrite( path ) ) {
+        throw new ResourceAccessDeniedException( String.format( "User is not authorized to write to '%s'.", path ),
+          path, e );
+      }
+
+      throw new AccessControlException( e );
     } catch ( GeneralSecurityException e ) {
       throw new AccessControlException( "User is not authorized to perform this operation." );
     }
@@ -1150,6 +1171,13 @@ public class RepositoryFileProvider extends BaseGenericFileProvider<RepositoryFi
       throw new NotFoundException( String.format( "Path not found '%s'.", path ), path, e );
     } catch ( UnifiedRepositoryAccessDeniedException e ) {
       throw new AccessControlException( e );
+    } catch ( UnifiedRepositoryException e ) {
+      if ( fileService.doesExist( path.toString() ) && !canManageAcl( path.toString() ) ) {
+        throw new ResourceAccessDeniedException(
+          String.format( "User is not authorized to manage the ACL of '%s'.", path ), path, e );
+      }
+
+      throw new OperationFailedException( e );
     } catch ( Exception e ) {
       throw new OperationFailedException( e );
     }

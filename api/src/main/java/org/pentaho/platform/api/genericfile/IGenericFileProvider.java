@@ -392,10 +392,11 @@ public interface IGenericFileProvider<T extends IGenericFile> {
    *
    * @param path     The file path to set the metadata for. This path must not refer to an item in the trash (deleted).
    * @param metadata The metadata to set. If empty, all existing metadata is removed.
-   * @throws AccessControlException   If the current user cannot perform this operation.
-   * @throws NotFoundException        If the specified path does not exist, or does refer to an item in the trash
-   *                                  (deleted), or the current user is not allowed to access it.
-   * @throws OperationFailedException If the operation fails for some other (checked) reason.
+   * @throws ResourceAccessDeniedException If the current user cannot write to the given path.
+   * @throws AccessControlException        If the current user cannot perform this operation.
+   * @throws NotFoundException             If the specified path does not exist, or does refer to an item in the trash
+   *                                       (deleted), or the current user is not allowed to access it.
+   * @throws OperationFailedException      If the operation fails for some other (checked) reason.
    * @see IGenericFileService#setFileMetadata(GenericFilePath, IGenericFileMetadata)
    */
   void setFileMetadata( @NonNull GenericFilePath path, @NonNull IGenericFileMetadata metadata )
@@ -430,12 +431,13 @@ public interface IGenericFileProvider<T extends IGenericFile> {
    *             {@link IGenericFileAcl}, the acl must contain at least one entry; when{@code entriesInheriting} is
    *             {@code true}, the acl entries may be {@code null} or empty and will be interpreted according to the
    *             inheritance semantics.
-   * @throws InvalidOperationException If the Access Control List (ACL) is not valid, for the target file (for
-   *                                   example, if inheritance is disabled but no entries are provided).
-   * @throws AccessControlException    If the current user cannot perform this operation.
-   * @throws NotFoundException         If the specified path does not exist, or does refer to an item in the trash
-   *                                   (deleted), or the current user is not allowed to access it.
-   * @throws OperationFailedException  If the operation fails for some other (checked) reason.
+   * @throws ResourceAccessDeniedException If the current user cannot write to the given path.
+   * @throws InvalidOperationException     If the Access Control List (ACL) is not valid, for the target file (for
+   *                                       example, if inheritance is disabled but no entries are provided).
+   * @throws AccessControlException        If the current user cannot perform this operation.
+   * @throws NotFoundException             If the specified path does not exist, or does refer to an item in the trash
+   *                                       (deleted), or the current user is not allowed to access it.
+   * @throws OperationFailedException      If the operation fails for some other (checked) reason.
    * @see IGenericFileService#setFileAcl(GenericFilePath, IGenericFileAcl)
    */
   void setFileAcl( @NonNull GenericFilePath path, @NonNull IGenericFileAcl acl )

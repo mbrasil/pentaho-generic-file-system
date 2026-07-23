@@ -2899,6 +2899,8 @@ class RepositoryFileProviderTest {
       new RepositoryFileProvider( mock( IUnifiedRepository.class ), fileServiceMock );
     List<StringKeyStringValueDto> nativeMetadata = repositoryProvider.convertToNativeFileMetadata( metadata );
 
+    doReturn( true ).when( fileServiceMock ).doesExist( encodeRepositoryPath( path.toString() ) );
+
     repositoryProvider.setFileMetadata( path, metadata );
 
     ArgumentCaptor<List<StringKeyStringValueDto>> metadataCaptor = ArgumentCaptor.forClass( List.class );
@@ -2924,6 +2926,8 @@ class RepositoryFileProviderTest {
     RepositoryFileProvider repositoryProvider =
       new RepositoryFileProvider( mock( IUnifiedRepository.class ), fileServiceMock );
 
+    doReturn( true ).when( fileServiceMock ).doesExist( encodeRepositoryPath( path.toString() ) );
+
     repositoryProvider.setFileMetadata( path, null );
 
     ArgumentCaptor<List<StringKeyStringValueDto>> metadataCaptor = ArgumentCaptor.forClass( List.class );
@@ -2945,6 +2949,8 @@ class RepositoryFileProviderTest {
     doNothing().when( fileServiceMock ).doSetMetadata( any(), any() );
     RepositoryFileProvider repositoryProvider =
       new RepositoryFileProvider( mock( IUnifiedRepository.class ), fileServiceMock );
+
+    doReturn( true ).when( fileServiceMock ).doesExist( encodeRepositoryPath( path.toString() ) );
 
     repositoryProvider.setFileMetadata( path, metadata );
 
@@ -2969,6 +2975,8 @@ class RepositoryFileProviderTest {
     RepositoryFileProvider repositoryProvider =
       new RepositoryFileProvider( mock( IUnifiedRepository.class ), fileServiceMock );
 
+    doReturn( true ).when( fileServiceMock ).doesExist( encodeRepositoryPath( path.toString() ) );
+
     assertThrows( AccessControlException.class, () -> repositoryProvider.setFileMetadata( path, metadata ) );
   }
 
@@ -2984,7 +2992,56 @@ class RepositoryFileProviderTest {
     RepositoryFileProvider repositoryProvider =
       new RepositoryFileProvider( mock( IUnifiedRepository.class ), fileServiceMock );
 
+    doReturn( true ).when( fileServiceMock ).doesExist( encodeRepositoryPath( path.toString() ) );
+
     assertThrows( RuntimeException.class, () -> repositoryProvider.setFileMetadata( path, metadata ) );
+  }
+
+  @Test
+  void testSetFileMetadataNotFound() throws Exception {
+    GenericFilePath path = GenericFilePath.parse( "/public/testFile1" );
+    BaseGenericFileMetadata metadata = new BaseGenericFileMetadata();
+    metadata.addMetadatum( "key1", "value1" );
+
+    FileService fileServiceMock = mock( FileService.class );
+    doReturn( false ).when( fileServiceMock ).doesExist( encodeRepositoryPath( path.toString() ) );
+    RepositoryFileProvider repositoryProvider =
+      new RepositoryFileProvider( mock( IUnifiedRepository.class ), fileServiceMock );
+
+    assertThrows( NotFoundException.class, () -> repositoryProvider.setFileMetadata( path, metadata ) );
+    verify( fileServiceMock, never() ).doSetMetadata( anyString(), any() );
+  }
+
+  @Test
+  void testSetFileMetadataAccessControlException() throws Exception {
+    GenericFilePath path = GenericFilePath.parse( "/public/testFile1" );
+    BaseGenericFileMetadata metadata = new BaseGenericFileMetadata();
+    metadata.addMetadatum( "key1", "value1" );
+
+    FileService fileServiceMock = mock( FileService.class );
+    doReturn( true ).when( fileServiceMock ).doesExist( encodeRepositoryPath( path.toString() ) );
+    doThrow( UnifiedRepositoryAccessDeniedException.class ).when( fileServiceMock ).doSetMetadata( any(), any() );
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    doReturn( true ).when( repositoryMock ).hasAccess( eq( path.toString() ), any() );
+    RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
+
+    assertThrows( AccessControlException.class, () -> repositoryProvider.setFileMetadata( path, metadata ) );
+  }
+
+  @Test
+  void testSetFileMetadataResourceAccessDeniedException() throws Exception {
+    GenericFilePath path = GenericFilePath.parse( "/public/testFile1" );
+    BaseGenericFileMetadata metadata = new BaseGenericFileMetadata();
+    metadata.addMetadatum( "key1", "value1" );
+
+    FileService fileServiceMock = mock( FileService.class );
+    doReturn( true ).when( fileServiceMock ).doesExist( encodeRepositoryPath( path.toString() ) );
+    doThrow( UnifiedRepositoryAccessDeniedException.class ).when( fileServiceMock ).doSetMetadata( any(), any() );
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    doReturn( false ).when( repositoryMock ).hasAccess( eq( path.toString() ), any() );
+    RepositoryFileProvider repositoryProvider = new RepositoryFileProvider( repositoryMock, fileServiceMock );
+
+    assertThrows( ResourceAccessDeniedException.class, () -> repositoryProvider.setFileMetadata( path, metadata ) );
   }
   // endregion
 
@@ -3138,6 +3195,60 @@ class RepositoryFileProviderTest {
   }
 
   @Test
+  void testSetFileAclAccessControlWhenResourceExistenceCannotBeConfirmed() throws Exception {
+    GenericFilePath path = GenericFilePath.parse( "/public/testFile1" );
+    IGenericFileAcl acl = mock( IGenericFileAcl.class );
+    RepositoryFileAclDto nativeAcl = mock( RepositoryFileAclDto.class );
+
+    FileService fileServiceMock = mock( FileService.class );
+    doThrow( UnifiedRepositoryAccessDeniedException.class ).when( fileServiceMock ).setFileAcls( any(), any() );
+    doReturn( false ).when( fileServiceMock ).doesExist( path.toString() );
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    RepositoryFileProvider repositoryProvider = spy( new RepositoryFileProvider( repositoryMock, fileServiceMock ) );
+    doReturn( nativeAcl ).when( repositoryProvider ).convertToNativeFileAcl( acl );
+    doReturn( true ).when( repositoryProvider ).validateFileAcl( acl );
+
+    assertThrows( AccessControlException.class, () -> repositoryProvider.setFileAcl( path, acl ) );
+    verify( repositoryMock, never() ).hasAccess( anyString(), any() );
+  }
+
+  @Test
+  void testSetFileAclUnifiedRepositoryExceptionOperationFailed() throws Exception {
+    GenericFilePath path = GenericFilePath.parse( "/public/testFile1" );
+    IGenericFileAcl acl = mock( IGenericFileAcl.class );
+    RepositoryFileAclDto nativeAcl = mock( RepositoryFileAclDto.class );
+
+    FileService fileServiceMock = mock( FileService.class );
+    doThrow( UnifiedRepositoryException.class ).when( fileServiceMock ).setFileAcls( any(), any() );
+    doReturn( true ).when( fileServiceMock ).doesExist( path.toString() );
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    doReturn( true ).when( repositoryMock ).hasAccess( eq( path.toString() ), any() );
+    RepositoryFileProvider repositoryProvider = spy( new RepositoryFileProvider( repositoryMock, fileServiceMock ) );
+    doReturn( nativeAcl ).when( repositoryProvider ).convertToNativeFileAcl( acl );
+    doReturn( true ).when( repositoryProvider ).validateFileAcl( acl );
+
+    assertThrows( OperationFailedException.class, () -> repositoryProvider.setFileAcl( path, acl ) );
+  }
+
+  @Test
+  void testSetFileAclUnifiedRepositoryExceptionPathNotFound() throws Exception {
+    GenericFilePath path = GenericFilePath.parse( "/public/testFile1" );
+    IGenericFileAcl acl = mock( IGenericFileAcl.class );
+    RepositoryFileAclDto nativeAcl = mock( RepositoryFileAclDto.class );
+
+    FileService fileServiceMock = mock( FileService.class );
+    doThrow( UnifiedRepositoryException.class ).when( fileServiceMock ).setFileAcls( any(), any() );
+    doReturn( false ).when( fileServiceMock ).doesExist( path.toString() );
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    RepositoryFileProvider repositoryProvider = spy( new RepositoryFileProvider( repositoryMock, fileServiceMock ) );
+    doReturn( nativeAcl ).when( repositoryProvider ).convertToNativeFileAcl( acl );
+    doReturn( true ).when( repositoryProvider ).validateFileAcl( acl );
+
+    assertThrows( OperationFailedException.class, () -> repositoryProvider.setFileAcl( path, acl ) );
+    verify( repositoryMock, never() ).hasAccess( anyString(), any() );
+  }
+
+  @Test
   void testSetFileAclOperationFailedException() throws Exception {
     GenericFilePath path = GenericFilePath.parse( "/public/testFile1" );
     IGenericFileAcl acl = mock( IGenericFileAcl.class );
@@ -3152,6 +3263,48 @@ class RepositoryFileProviderTest {
       .setFileAcls( encodeRepositoryPath( path.toString() ), nativeAcl );
 
     assertThrows( OperationFailedException.class, () -> repositoryProvider.setFileAcl( path, acl ) );
+  }
+
+  @Test
+  void testSetFileAclResourceAccessDenied() throws Exception {
+    GenericFilePath path = GenericFilePath.parse( "/public/testFile1" );
+    IGenericFileAcl acl = mock( IGenericFileAcl.class );
+    RepositoryFileAclDto nativeAcl = mock( RepositoryFileAclDto.class );
+
+    FileService fileServiceMock = mock( FileService.class );
+    doThrow( UnifiedRepositoryException.class ).when( fileServiceMock ).setFileAcls( any(), any() );
+    doReturn( true ).when( fileServiceMock ).doesExist( path.toString() );
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    // File is found/readable but the caller lacks ACL_MANAGEMENT on it: per-file gate, not the ABS-level check.
+    doReturn( createNativeFile( "id", path, false ) ).when( repositoryMock ).getFile( path.toString() );
+    doReturn( false ).when( repositoryMock ).hasAccess( eq( path.toString() ), any() );
+    RepositoryFileProvider repositoryProvider = spy( new RepositoryFileProvider( repositoryMock, fileServiceMock ) );
+    doReturn( nativeAcl ).when( repositoryProvider ).convertToNativeFileAcl( acl );
+    doReturn( true ).when( repositoryProvider ).validateFileAcl( acl );
+
+    assertThrows( ResourceAccessDeniedException.class, () -> repositoryProvider.setFileAcl( path, acl ) );
+  }
+
+  @Test
+  void testSetFileAclAccessControlWhenAbsLevel() throws Exception {
+    GenericFilePath path = GenericFilePath.parse( "/public/testFile1" );
+    IGenericFileAcl acl = mock( IGenericFileAcl.class );
+    RepositoryFileAclDto nativeAcl = mock( RepositoryFileAclDto.class );
+
+    FileService fileServiceMock = mock( FileService.class );
+    doThrow( UnifiedRepositoryAccessDeniedException.class ).when( fileServiceMock ).setFileAcls( any(), any() );
+    doReturn( true ).when( fileServiceMock ).doesExist( path.toString() );
+    IUnifiedRepository repositoryMock = mock( IUnifiedRepository.class );
+    // File is found/readable and the caller can manage its ACL: the denial was the coarse ABS-level check.
+    doReturn( createNativeFile( "id", path, false ) ).when( repositoryMock ).getFile( path.toString() );
+    doReturn( true ).when( repositoryMock ).hasAccess( eq( path.toString() ), any() );
+    RepositoryFileProvider repositoryProvider = spy( new RepositoryFileProvider( repositoryMock, fileServiceMock ) );
+    doReturn( nativeAcl ).when( repositoryProvider ).convertToNativeFileAcl( acl );
+    doReturn( true ).when( repositoryProvider ).validateFileAcl( acl );
+
+    AccessControlException ex =
+      assertThrows( AccessControlException.class, () -> repositoryProvider.setFileAcl( path, acl ) );
+    assertEquals( AccessControlException.class, ex.getClass() );
   }
   // endregion
 
