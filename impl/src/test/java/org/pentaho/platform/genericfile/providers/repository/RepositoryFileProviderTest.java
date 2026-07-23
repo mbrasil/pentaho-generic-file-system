@@ -666,6 +666,30 @@ class RepositoryFileProviderTest {
   }
 
   @Test
+  void testGetTreeNullMaxDepthPassedThroughToFileService() throws OperationFailedException {
+    NativeDtoRepositoryScenario scenario = new NativeDtoRepositoryScenario();
+
+    FileService fileServiceMock = mock( FileService.class );
+    doReturn( scenario.rootTree )
+      .when( fileServiceMock )
+      .doGetTree( any(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean() );
+
+    RepositoryFileProvider repositoryProvider =
+      new RepositoryFileProvider( mock( IUnifiedRepository.class ), fileServiceMock );
+
+    GetTreeOptions options = new GetTreeOptions();
+    options.setBasePath( ROOT_PATH );
+    // Intentionally leave maxDepth unset (null) to exercise the null branch.
+
+    IGenericFileTree tree = repositoryProvider.getTree( options );
+
+    assertRepositoryTree( tree );
+
+    // Null max depth is passed through unchanged to the backend (not treated as zero depth).
+    verify( fileServiceMock, times( 1 ) ).doGetTree( ENCODED_ROOT_PATH, null, ALL_FILTER, false, false, false );
+  }
+
+  @Test
   void testGetTreeThrowsNotFoundWhenDoGetTreeReturnsNull() throws InvalidPathException {
     FileService fileServiceMock = mock( FileService.class );
     doReturn( null )
@@ -680,6 +704,48 @@ class RepositoryFileProviderTest {
     options.setMaxDepth( 1 );
 
     assertThrows( NotFoundException.class, () -> repositoryProvider.getTree( options ) );
+  }
+
+  @Test
+  void testGetTreeThrowsAccessControlWhenDoGetTreeNullAndReadDenied() throws InvalidPathException {
+    FileService fileServiceMock = mock( FileService.class );
+    doReturn( null )
+      .when( fileServiceMock )
+      .doGetTree( any(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean() );
+
+    // The follow-up existence check itself hits the ABS-level repository.read denial.
+    doThrow( UnifiedRepositoryAccessDeniedException.class ).when( fileServiceMock ).doesExist( ROOT_PATH );
+
+    RepositoryFileProvider repositoryProvider =
+      new RepositoryFileProvider( mock( IUnifiedRepository.class ), fileServiceMock );
+
+    GetTreeOptions options = new GetTreeOptions();
+    options.setBasePath( ROOT_PATH );
+    options.setMaxDepth( 1 );
+
+    assertThrows( AccessControlException.class, () -> repositoryProvider.getTree( options ) );
+  }
+
+  @Test
+  void testGetTreeThrowsOperationFailedWhenDoGetTreeNullButFoundAndReadable() throws InvalidPathException {
+    FileService fileServiceMock = mock( FileService.class );
+    doReturn( null )
+      .when( fileServiceMock )
+      .doGetTree( any(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean() );
+
+    // Base path is found and readable now: the null was not a not-found/no-read condition.
+    doReturn( true ).when( fileServiceMock ).doesExist( ROOT_PATH );
+
+    RepositoryFileProvider repositoryProvider =
+      new RepositoryFileProvider( mock( IUnifiedRepository.class ), fileServiceMock );
+
+    GetTreeOptions options = new GetTreeOptions();
+    options.setBasePath( ROOT_PATH );
+    options.setMaxDepth( 1 );
+
+    OperationFailedException ex =
+      assertThrows( OperationFailedException.class, () -> repositoryProvider.getTree( options ) );
+    assertEquals( OperationFailedException.class, ex.getClass() );
   }
 
   @Test

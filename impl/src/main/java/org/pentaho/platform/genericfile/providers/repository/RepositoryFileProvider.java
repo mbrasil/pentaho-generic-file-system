@@ -464,7 +464,15 @@ public class RepositoryFileProvider extends BaseGenericFileProvider<RepositoryFi
       false );
 
     if ( nativeTree == null ) {
-      throw new NotFoundException( String.format( "Base path not found '%s'.", basePath ), basePath );
+      try {
+        if ( fileService.doesExist( basePath.toString() ) ) {
+          throw new OperationFailedException( String.format( "Unable to get the tree for base path '%s'.", basePath ) );
+        }
+
+        throw new NotFoundException( String.format( "Base path not found '%s'.", basePath ), basePath );
+      } catch ( UnifiedRepositoryAccessDeniedException e ) {
+        throw new AccessControlException( e );
+      }
     }
 
     if ( isZeroDepth ) {
